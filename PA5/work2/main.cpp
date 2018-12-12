@@ -60,8 +60,10 @@ int main(int argc, char** argv) {
      *  4. Eigen::Quaterniond q(rotation_vector.toRotationMatrix()); Sophus::SO3 R_Z(q)
      * */
     // use AngleAxisd
+/*
     Eigen::AngleAxisd R_Z(M_PI/2, Eigen::Vector3d(0, 0, 1));    //z rotation 90
     Eigen::AngleAxisd negative_R_Z(-1 * M_PI/2, Eigen::Vector3d(0, 0, 1)); //z rotation -90
+
     Matrix3d t_wedge1;
     Matrix3d t_wedge2;
 
@@ -69,14 +71,41 @@ int main(int argc, char** argv) {
     Matrix3d R2;
 
 
-    t_wedge1 = U * R_Z * Sigma * U.transpose();
+   t_wedge1 = U * R_Z * Sigma * U.transpose();
     R1 = U * R_Z.matrix().transpose() * V.transpose();
 
     t_wedge2 = U * negative_R_Z * Sigma * U.transpose();
     R2 = U * negative_R_Z.matrix().transpose() * V.transpose();
+*/
     /*
      * the relationship between T and the multiple of the answers in the book
      * */
+ /*
+    cout << "R1 = " << R1 << endl;
+    cout << "R2 = " << R2 << endl;
+    cout << "t1 = " << Sophus::SO3::vee(t_wedge1) << endl;
+    cout << "t2 = " << Sophus::SO3::vee(t_wedge2) << endl;
+
+    // check t^R=E up to scale
+    Matrix3d tR = t_wedge1 * R1;
+    cout << "t^R = " << tR << endl;
+*/
+    //use Sophus::SO3
+    Sophus::SO3 R_Z(0, 0, M_PI/2);
+    Sophus::SO3 negative_R_Z(0, 0, -M_PI/2);
+
+    Matrix3d t_wedge1;
+    Matrix3d t_wedge2;
+
+    Matrix3d R1;
+    Matrix3d R2;
+
+    t_wedge1 = U * R_Z.matrix() * Sigma * U.transpose();
+    R1 = U * R_Z.matrix().transpose() * V.transpose();
+
+    t_wedge2 = U * negative_R_Z.matrix() * Sigma * U.transpose();
+    R2 = U * negative_R_Z.matrix().transpose() * V.transpose();
+
     cout << "R1 = " << R1 << endl;
     cout << "R2 = " << R2 << endl;
     cout << "t1 = " << Sophus::SO3::vee(t_wedge1) << endl;
