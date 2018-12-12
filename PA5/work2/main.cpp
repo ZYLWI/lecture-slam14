@@ -105,7 +105,9 @@ int main(int argc, char** argv) {
 
     t_wedge2 = U * negative_R_Z.matrix() * Sigma * U.transpose();
     R2 = U * negative_R_Z.matrix().transpose() * V.transpose();
-
+/*
+ * the relationship between T and the multiple of the answers in the book
+ * */
     cout << "R1 = " << R1 << endl;
     cout << "R2 = " << R2 << endl;
     cout << "t1 = " << Sophus::SO3::vee(t_wedge1) << endl;
