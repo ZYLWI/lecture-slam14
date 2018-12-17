@@ -20,7 +20,8 @@ using namespace cv;
 
 const string compare_file = "../compare.txt";
 const string title_Before_registration = "Before registration";
-const string title_After_registration = "After registration";
+const string title_After_SVD_registration = "After SVD registration";
+const string title_After_BA_registration = "After BA registration";
 
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
@@ -30,6 +31,10 @@ void read_data(const string& file_path, vector<Sophus::SE3, Eigen::aligned_alloc
 void pose_estimation_3d3d(const vector<Point3d>& Pg, const vector<Point3d>& Pe, Eigen::Matrix3d& R, Eigen::Vector3d& t);
 
 void bundleAdjustment(const vector<Point3d>& Pg, const vector<Point3d>& Pe, Eigen::Matrix3d& R, Eigen::Vector3d& t);
+
+void DrawTrajectory(const string& titile, vector<Point3d>& Pg, vector<Point3d>& Pe);
+
+void translation_Pe(vector<Point3d>& Pe, Eigen::Matrix3d& R, Eigen::Vector3d& t);
 
 // g2o edge
 class EdgeProjectXYZRGBDPoseOnly : public g2o::BaseUnaryEdge<3, Eigen::Vector3d, g2o::VertexSE3Expmap>
@@ -102,20 +107,28 @@ int main(int argc, char** argv) {
         Pe.push_back(pe);
     }
 
+    DrawTrajectory(title_Before_registration, Pg, Pe);
     //first use SVD
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
     pose_estimation_3d3d(Pg, Pe, R, t);
 
+
     cout << "SVD init" << endl;
     cout << "R = " << R << endl;
     cout << "t = " << t.transpose() << endl;
+
+    translation_Pe(Pe, R, t);
+    DrawTrajectory(title_After_SVD_registration, Pg, Pe);
 
     //then use Bundle Adjustment
     bundleAdjustment(Pg, Pe, R, t);
     cout << "Bundle Adjustment" << endl;
     cout << "R = " << R << endl;
     cout << "t = " << t.transpose() << endl;
+
+    translation_Pe(Pe, R, t);
+    DrawTrajectory(title_After_BA_registration, Pg, Pe);
     return 0;
 }
 void read_data(const string& file_path, vector<Sophus::SE3, Eigen::aligned_allocator<Sophus::SE3>>& Te,
@@ -217,6 +230,67 @@ void bundleAdjustment(const vector<Point3d>& Pg, const vector<Point3d>& Pe, Eige
     optimizer.initializeOptimization();
     optimizer.optimize(10);
 
-    cout << "T = " << endl << Eigen::Isometry3d(pose->estimate()).matrix() << endl;
+   // cout << "T = " << endl << Eigen::Isometry3d(pose->estimate()).matrix() << endl;
 }
 
+void DrawTrajectory(const string& title, vector<Point3d>& Pg, vector<Point3d>& Pe){
+    if(Pg.empty()){
+        cerr << "Tg is empty!" << endl;
+        return;
+    }
+
+    if(Pe.empty()){
+        cerr << "Te is empty!" << endl;
+        return;
+    }
+
+    //create pangolin window and plot the trajectory
+    pangolin::CreateWindowAndBind(title, 1024, 768);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    pangolin::OpenGlRenderState s_cam(
+            pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
+            pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0)
+            );
+    pangolin::View& d_cam = pangolin::CreateDisplay()
+            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f/768.0f)
+            .SetHandler(new pangolin::Handler3D(s_cam));
+
+    while(pangolin::ShouldQuit() == false){
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        d_cam.Activate(s_cam);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        glLineWidth(2);
+
+        for(size_t i = 0; i < Pg.size() - 1; i++){
+            glColor3f(1 - (float)i / Pg.size(), 0.0f, (float)i / Pg.size());
+            glBegin(GL_LINES);
+            auto p1 = Pg[i], p2 = Pg[i + 1];
+            glVertex3d(p1.x, p1.y, p1.z);
+            glVertex3d(p2.x, p2.y, p2.z);
+            glEnd();
+        }
+        for(size_t i = 0; i < Pe.size() - 1; i++){
+            glColor3f(1 - (float)i / Pe.size(), 0.0f, (float)i / Pe.size());
+            glBegin(GL_LINES);
+            auto p1 = Pe[i], p2 = Pe[i + 1];
+            glVertex3d(p1.x, p1.y, p1.z);
+            glVertex3d(p2.x, p2.y, p2.z);
+            glEnd();
+        }
+        pangolin::FinishFrame();
+        usleep(5000); //sleep 5ms;
+    }
+}
+
+void translation_Pe(vector<Point3d>& Pe, Eigen::Matrix3d& R, Eigen::Vector3d& t){
+    int N = Pe.size();
+    for(int i = 0; i < N; i++){
+        Eigen::Vector3d pe = R * Eigen::Vector3d(Pe[i].x, Pe[i].y, Pe[i].z) + t;
+        Pe[i].x = pe[0]; Pe[i].y = pe[1]; Pe[i].z = pe[2];
+    }
+}
