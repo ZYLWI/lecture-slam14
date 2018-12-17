@@ -20,7 +20,6 @@ using namespace cv;
 
 const string compare_file = "../compare.txt";
 const string title_Before_registration = "Before registration";
-const string title_After_SVD_registration = "After SVD registration";
 const string title_After_BA_registration = "After BA registration";
 
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
@@ -118,11 +117,9 @@ int main(int argc, char** argv) {
     cout << "R = " << R << endl;
     cout << "t = " << t.transpose() << endl;
 
-    translation_Pe(Pe, R, t);
-    DrawTrajectory(title_After_SVD_registration, Pg, Pe);
-
     //then use Bundle Adjustment
     bundleAdjustment(Pg, Pe, R, t);
+
     cout << "Bundle Adjustment" << endl;
     cout << "R = " << R << endl;
     cout << "t = " << t.transpose() << endl;
@@ -266,18 +263,19 @@ void DrawTrajectory(const string& title, vector<Point3d>& Pg, vector<Point3d>& P
 
         glLineWidth(2);
 
-        for(size_t i = 0; i < Pg.size() - 1; i++){
-            glColor3f(1 - (float)i / Pg.size(), 0.0f, (float)i / Pg.size());
-            glBegin(GL_LINES);
-            auto p1 = Pg[i], p2 = Pg[i + 1];
-            glVertex3d(p1.x, p1.y, p1.z);
-            glVertex3d(p2.x, p2.y, p2.z);
-            glEnd();
-        }
         for(size_t i = 0; i < Pe.size() - 1; i++){
             glColor3f(1 - (float)i / Pe.size(), 0.0f, (float)i / Pe.size());
             glBegin(GL_LINES);
             auto p1 = Pe[i], p2 = Pe[i + 1];
+            glVertex3d(p1.x, p1.y, p1.z);
+            glVertex3d(p2.x, p2.y, p2.z);
+            glEnd();
+        }
+
+        for(size_t i = 0; i < Pg.size() - 1; i++){
+            glColor3f(1 - (float)i / Pg.size(), 0.0f, (float)i / Pg.size());
+            glBegin(GL_LINES);
+            auto p1 = Pg[i], p2 = Pg[i + 1];
             glVertex3d(p1.x, p1.y, p1.z);
             glVertex3d(p2.x, p2.y, p2.z);
             glEnd();
